@@ -1,0 +1,15 @@
+{
+"GameServers": [
+    {
+    "Name": "GS1 - America [West]",
+    "IP": "123.123.123.123"
+    },
+    {
+    "Name": "GS2 - America [East]",
+    "IP": "123.123.123.123"
+    }
+],
+"Password": "passwordhere",
+"TelportPort": 8888,
+"SecondsToCheck": 60
+}
