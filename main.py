@@ -1,6 +1,7 @@
 import telnetlib
 import time
 import json
+import threading
 
 # Read configuration settings from config file
 with open('config.json', 'r') as config_file:
@@ -28,34 +29,45 @@ def get_status(ip_address, port, password):
         print(f"Error occurred while connecting to {ip_address}: {e}")
         return None
 
-# Do the thing
+# Function to fetch status and update results
+def check_server(ip_data, results):
+    ip = ip_data['IP']
+    name = ip_data['Name']
+    output = get_status(ip, telnet_port, password)
+    if output is not None:
+        data = {
+            'Status': 1,
+            'RunningGame': None,
+            'UsersInGame': None,
+            'Name': name
+        }
+        lines = output.split('\r\n')
+        for line in lines:
+            if line.startswith('Current running game:'):
+                data['RunningGame'] = int(line.split(': ')[1])
+            elif line.startswith('Current users in game:'):
+                data['UsersInGame'] = int(line.split(': ')[1])
+        results[ip] = data
+    else:
+        results[ip] = {
+            'Status': 0,
+            'RunningGame': None,
+            'UsersInGame': None,
+            'Name': name
+        }
+
+# Do the thing with threading
 while True:
     results = {}
+    threads = []
+
     for ip_data in gameservers:
-        ip = ip_data['IP']
-        name = ip_data['Name']
-        output = get_status(ip, telnet_port, password)
-        if output is not None:
-            data = {
-                'Status': 1,
-                'RunningGame': None,
-                'UsersInGame': None,
-                'Name': name
-            }
-            lines = output.split('\r\n')
-            for line in lines:
-                if line.startswith('Current running game:'):
-                    data['RunningGame'] = int(line.split(': ')[1])
-                elif line.startswith('Current users in game:'):
-                    data['UsersInGame'] = int(line.split(': ')[1])
-            results[ip] = data
-        else:
-            results[ip] = {
-                'Status': 0,
-                'RunningGame': None,
-                'UsersInGame': None,
-                'Name': name
-            }
+        thread = threading.Thread(target=check_server, args=(ip_data, results))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
 
     # Write results to a JSON file
     with open('results.json', 'w') as file:
